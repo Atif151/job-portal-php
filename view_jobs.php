@@ -16,13 +16,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $job_id = intval($_POST['job_id']);
     
     if (isset($_POST['save_job'])) {
-        // Save the job
-        $stmt = $conn->prepare("INSERT INTO saved_jobs (user_id, job_id, saved_date) VALUES (?, ?, NOW())");
-        $stmt->bind_param("ii", $user_id, $job_id);
+        // Check if job is already saved
+        $check_stmt = $conn->prepare("SELECT * FROM saved_jobs WHERE user_id = ? AND job_id = ?");
+        $check_stmt->bind_param("ii", $user_id, $job_id);
+        $check_stmt->execute();
+        $check_result = $check_stmt->get_result();
         
-        if ($stmt->execute()) {
-            $message = "The job is saved";
+        if ($check_result->num_rows == 0) {
+            // Save the job only if not already saved
+            $stmt = $conn->prepare("INSERT INTO saved_jobs (user_id, job_id, saved_date) VALUES (?, ?, NOW())");
+            $stmt->bind_param("ii", $user_id, $job_id);
+            
+            if ($stmt->execute()) {
+                $message = "The job is saved";
+            }
+        } else {
+            $message = "Job is already saved";
         }
+        $check_stmt->close();
     } elseif (isset($_POST['unsave_job'])) {
         // Unsave the job
         $stmt = $conn->prepare("DELETE FROM saved_jobs WHERE user_id = ? AND job_id = ?");
@@ -346,7 +357,7 @@ $jobs = $result->fetch_all(MYSQLI_ASSOC);
             </div>
             <div class="nav-right">
                 <a href="view_jobs.php" class="nav-link">Browse Jobs</a>
-                <a href="my_applications.php" class="nav-link">My Applications</a>
+                <a href="my_application.php" class="nav-link">My Applications</a>
                 <a href="saved_jobs.php" class="nav-link">Saved Jobs (<?php echo $saved_count; ?>)</a>
                 <a href="profile.php" class="nav-link">Profile</a>
                 <a href="logout.php" class="nav-link logout">Logout</a>
