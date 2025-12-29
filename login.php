@@ -4,10 +4,10 @@ session_start();
 // Check ONLY for user_id and user_type (not "user")
 if (isset($_SESSION["user_id"]) && isset($_SESSION["user_type"])) {
     if ($_SESSION["user_type"] === "job_seeker") {
-        header("Location: view_jobs.php");
+        header("Location: job_seeker_dashboard.php");
         exit();
     } else {
-        header("Location: create_job.php");
+        header("Location: employee_dashboard.php");
         exit();
     }
 }
@@ -60,11 +60,11 @@ if (isset($_SESSION["user_id"]) && isset($_SESSION["user_type"])) {
                             
                             if (mysqli_num_rows($resultSeeker) > 0) {
                                 $_SESSION["user_type"] = "job_seeker";
-                                header("Location: view_jobs.php");
+                                header("Location: job_seeker_dashboard.php");
                                 exit();
                             } else {
                                 $_SESSION["user_type"] = "employee";
-                                header("Location: create_job.php");
+                                header("Location: employee_dashboard.php");
                                 exit();
                             }
                         }

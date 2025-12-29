@@ -11,20 +11,3 @@
         .form-group{
             margin-bottom:30px;
         }
-        footer {
-    background: #333;
-    color: white;
-    padding: 20px;
-    text-align: center;
-    margin-top: 50px;
-}
-
-.footer-links a {
-    color: white;
-    margin: 0 10px;
-    text-decoration: none;
-}
-
-.footer-links a:hover {
-    text-decoration: underline;
-}

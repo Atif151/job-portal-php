@@ -342,7 +342,7 @@ $jobs = $result->fetch_all(MYSQLI_ASSOC);
     <div class="container">
         <nav class="navbar">
             <div class="nav-left">
-                <a href="view_jobs.php" class="nav-brand">Job Portal</a>
+                <a href="job_seeker_dashboard.php" class="nav-brand">Job Portal</a>
             </div>
             <div class="nav-right">
                 <a href="view_jobs.php" class="nav-link">Browse Jobs</a>

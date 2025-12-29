@@ -1,6 +1,7 @@
 <?php
 session_start();
-if (!isset($_SESSION["user"]) || $_SESSION["user_type"] != "employee") {
+// FIX 1: Change from $_SESSION["user"] to $_SESSION["user_id"]
+if (!isset($_SESSION["user_id"]) || $_SESSION["user_type"] != "employee") {
     header("Location: login.php");
     exit();
 }
@@ -19,7 +20,7 @@ require_once "database.php";
 <body>
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
         <div class="container-fluid">
-            <a class="navbar-brand" href="create_job.php">Find Jobs</a>
+            <a class="navbar-brand" href="employee_dashboard.php">Find Jobs</a>
             <div class="d-flex">
                 <span class="navbar-text me-3">Welcome, <?php echo $_SESSION["email"]; ?></span>
                 <a href="my_jobs.php" class="btn btn-outline-primary me-2">My Jobs</a>
@@ -38,7 +39,8 @@ require_once "database.php";
             $location = $_POST["location"];
             $deadline = $_POST["deadline"];
             $categoryId = $_POST["category_id"];
-            $userId = $_SESSION["user"];
+            // FIX 2: Change from $_SESSION["user"] to $_SESSION["user_id"]
+            $userId = $_SESSION["user_id"];
             
             $errors = array();
             

@@ -1,6 +1,7 @@
 <?php
 session_start();
-if (!isset($_SESSION["user"]) || $_SESSION["user_type"] != "employee") {
+// FIX 1: Change from $_SESSION["user"] to $_SESSION["user_id"]
+if (!isset($_SESSION["user_id"]) || $_SESSION["user_type"] != "employee") {
     header("Location: login.php");
     exit();
 }
@@ -10,7 +11,8 @@ require_once "database.php";
 // Handle delete job
 if (isset($_POST["delete_job"])) {
     $jobId = $_POST["job_id"];
-    $userId = $_SESSION["user"];
+    // FIX 2: Change from $_SESSION["user"] to $_SESSION["user_id"]
+    $userId = $_SESSION["user_id"];
     
     $sql = "DELETE FROM job WHERE job_id = ? AND user_id = ?";
     $stmt = mysqli_stmt_init($conn);
@@ -21,7 +23,8 @@ if (isset($_POST["delete_job"])) {
     }
 }
 
-$userId = $_SESSION["user"];
+// FIX 3: Change from $_SESSION["user"] to $_SESSION["user_id"]
+$userId = $_SESSION["user_id"];
 $sql = "SELECT j.*, cat.description as category_name, 
         (SELECT COUNT(*) FROM application WHERE job_id = j.job_id) as application_count
         FROM job j 
@@ -48,7 +51,8 @@ if (mysqli_stmt_prepare($stmt, $sql)) {
 <body>
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
         <div class="container-fluid">
-            <a class="navbar-brand" href="create_job.php">Find Jobs</a>
+            <!-- BONUS FIX: Link to dashboard instead of create_job.php -->
+            <a class="navbar-brand" href="employee_dashboard.php">Find Jobs</a>
             <div class="d-flex">
                 <a href="create_job.php" class="btn btn-outline-primary me-2">Post New Job</a>
                 <a href="logout.php" class="btn btn-outline-danger">Logout</a>
