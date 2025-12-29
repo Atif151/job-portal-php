@@ -9,50 +9,36 @@ if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'job_seeker') {
 }
 
 $user_id = $_SESSION['user_id'];
-$message = '';
 
-// Handle save/unsave action
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+// Handle unsave action
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['unsave'])) {
     $job_id = intval($_POST['job_id']);
     
-    if (isset($_POST['save_job'])) {
-        // Save the job
-        $stmt = $conn->prepare("INSERT INTO saved_jobs (user_id, job_id, saved_date) VALUES (?, ?, NOW())");
-        $stmt->bind_param("ii", $user_id, $job_id);
-        
-        if ($stmt->execute()) {
-            $message = "The job is saved";
-        }
-    } elseif (isset($_POST['unsave_job'])) {
-        // Unsave the job
-        $stmt = $conn->prepare("DELETE FROM saved_jobs WHERE user_id = ? AND job_id = ?");
-        $stmt->bind_param("ii", $user_id, $job_id);
-        
-        if ($stmt->execute()) {
-            $message = "Job removed from saved list";
-        }
+    $stmt = $conn->prepare("DELETE FROM saved_jobs WHERE user_id = ? AND job_id = ?");
+    $stmt->bind_param("ii", $user_id, $job_id);
+    
+    if ($stmt->execute()) {
+        header("Location: saved_jobs.php?msg=unsaved");
+        exit();
     }
 }
 
-// Get count of saved jobs
-$stmt = $conn->prepare("SELECT COUNT(*) as count FROM saved_jobs WHERE user_id = ?");
-$stmt->bind_param("i", $user_id);
-$stmt->execute();
-$saved_count = $stmt->get_result()->fetch_assoc()['count'];
-
-// Fetch all jobs with saved status
-$stmt = $conn->prepare("SELECT j.*, c.company_name, jc.description as category,
-                        (SELECT COUNT(*) FROM saved_jobs WHERE user_id = ? AND job_id = j.job_id) as is_saved
-                        FROM job j
+// Fetch all saved jobs
+$stmt = $conn->prepare("SELECT sj.*, j.location, j.salary, j.description, j.deadline, 
+                        c.company_name, jc.description as category, j.job_id
+                        FROM saved_jobs sj
+                        JOIN job j ON sj.job_id = j.job_id
                         LEFT JOIN employee e ON j.user_id = e.user_id
                         LEFT JOIN company c ON e.company_id = c.company_id
                         LEFT JOIN job_category jc ON j.category_id = jc.category_id
-                        WHERE j.deadline >= CURDATE()
-                        ORDER BY j.job_id DESC");
+                        WHERE sj.user_id = ?
+                        ORDER BY sj.saved_date DESC");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $result = $stmt->get_result();
-$jobs = $result->fetch_all(MYSQLI_ASSOC);
+$saved_jobs = $result->fetch_all(MYSQLI_ASSOC);
+
+$saved_count = count($saved_jobs);
 ?>
 
 <!DOCTYPE html>
@@ -60,7 +46,7 @@ $jobs = $result->fetch_all(MYSQLI_ASSOC);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>View Jobs</title>
+    <title>Saved Jobs</title>
     <style>
         * {
             margin: 0;
@@ -70,14 +56,14 @@ $jobs = $result->fetch_all(MYSQLI_ASSOC);
         
         body {
             font-family: Arial, sans-serif;
-            background: #f5f5f5;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             padding: 0;
         }
         
         .navbar {
             background: white;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             padding: 15px 40px;
             display: flex;
             justify-content: space-between;
@@ -122,42 +108,30 @@ $jobs = $result->fetch_all(MYSQLI_ASSOC);
             max-width: 1200px;
             margin: 0 auto;
             background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
             padding: 30px;
             margin: 20px;
         }
         
-        .page-header {
+        .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 2px solid #e9ecef;
         }
         
         h1 {
             color: #333;
         }
         
-        .top-right {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
-        
-        .saved-info {
+        .saved-count {
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
             font-size: 14px;
-            color: #666;
-            background: #f8f9fa;
-            padding: 10px 15px;
-            border-radius: 5px;
-        }
-        
-        .saved-info strong {
-            color: #667eea;
-            font-size: 16px;
+            font-weight: bold;
         }
         
         .message {
@@ -168,53 +142,74 @@ $jobs = $result->fetch_all(MYSQLI_ASSOC);
             background: #d4edda;
             color: #155724;
             border: 1px solid #c3e6cb;
-            animation: slideIn 0.3s ease-out;
         }
         
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        .top-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 20px;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+        }
+        
+        .empty-state h2 {
+            color: #666;
+            margin-bottom: 15px;
+            font-size: 24px;
+        }
+        
+        .empty-state p {
+            color: #999;
+            margin-bottom: 30px;
+            font-size: 16px;
         }
         
         .jobs-grid {
             display: grid;
-            gap: 25px;
+            gap: 20px;
         }
         
         .job-card {
-            background: #fafafa;
-            border-radius: 6px;
+            background: #f8f9fa;
+            border-radius: 8px;
             padding: 25px;
-            border-left: 4px solid #ddd;
+            border-left: 4px solid #667eea;
             transition: transform 0.3s, box-shadow 0.3s;
         }
         
         .job-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            border-left-color: #667eea;
+            transform: translateY(-3px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
         }
         
         .job-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
             margin-bottom: 15px;
         }
         
         .company-name {
             font-size: 22px;
             font-weight: bold;
-            color: #333;
+            color: #667eea;
             margin-bottom: 5px;
         }
         
         .category {
             color: #666;
             font-size: 14px;
+        }
+        
+        .saved-date {
+            font-size: 12px;
+            color: #999;
+            background: #e9ecef;
+            padding: 5px 10px;
+            border-radius: 5px;
         }
         
         .job-details {
@@ -287,6 +282,15 @@ $jobs = $result->fetch_all(MYSQLI_ASSOC);
             background: #5568d3;
         }
         
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        
         .btn-secondary {
             background: #6c757d;
             color: white;
@@ -295,87 +299,41 @@ $jobs = $result->fetch_all(MYSQLI_ASSOC);
         .btn-secondary:hover {
             background: #545b62;
         }
-        
-        .btn-save {
-            background: #28a745;
-            color: white;
-        }
-        
-        .btn-save:hover {
-            background: #218838;
-        }
-        
-        .btn-saved {
-            background: #ffc107;
-            color: #333;
-        }
-        
-        .btn-saved:hover {
-            background: #e0a800;
-        }
-        
-        .btn-link {
-            background: #17a2b8;
-            color: white;
-        }
-        
-        .btn-link:hover {
-            background: #138496;
-        }
-        
-        .empty-state {
-            text-align: center;
-            padding: 80px 20px;
-        }
-        
-        .empty-state h2 {
-            color: #666;
-            margin-bottom: 15px;
-        }
-        
-        .empty-state p {
-            color: #999;
-        }
     </style>
 </head>
 <body>
     <div class="container">
-        <nav class="navbar">
-            <div class="nav-left">
-                <a href="view_jobs.php" class="nav-brand">Job Portal</a>
-            </div>
-            <div class="nav-right">
-                <a href="view_jobs.php" class="nav-link">Browse Jobs</a>
-                <a href="my_applications.php" class="nav-link">My Applications</a>
-                <a href="saved_jobs.php" class="nav-link">Saved Jobs (<?php echo $saved_count; ?>)</a>
-                <a href="profile.php" class="nav-link">Profile</a>
-                <a href="logout.php" class="nav-link logout">Logout</a>
-            </div>
-        </nav>
-        
-        <div class="page-header">
-            <h1>Available Jobs</h1>
-            <div class="saved-info">
-                You have saved <strong><?php echo $saved_count; ?></strong> job<?php echo $saved_count != 1 ? 's' : ''; ?>
-            </div>
+        <div class="header">
+            <h1>Saved Jobs</h1>
+            <div class="saved-count">You have saved <?php echo $saved_count; ?> job<?php echo $saved_count != 1 ? 's' : ''; ?></div>
         </div>
         
-        <?php if ($message): ?>
-            <div class="message"><?php echo htmlspecialchars($message); ?></div>
+        <?php if (isset($_GET['msg']) && $_GET['msg'] === 'unsaved'): ?>
+            <div class="message">Job removed from saved list.</div>
         <?php endif; ?>
         
-        <?php if (empty($jobs)): ?>
+        <div class="top-actions">
+            <a href="view_jobs.php" class="btn btn-secondary">Back to All Jobs</a>
+        </div>
+        
+        <?php if (empty($saved_jobs)): ?>
             <div class="empty-state">
-                <h2>No Jobs Available</h2>
-                <p>There are currently no open positions. Please check back later.</p>
+                <h2>No jobs has saved yet</h2>
+                <p>Start saving jobs that interest you to view them here later!</p>
+                <a href="view_jobs.php" class="btn btn-primary">Browse Available Jobs</a>
             </div>
         <?php else: ?>
             <div class="jobs-grid">
-                <?php foreach ($jobs as $job): ?>
+                <?php foreach ($saved_jobs as $job): ?>
                     <div class="job-card">
                         <div class="job-header">
-                            <div class="company-name"><?php echo htmlspecialchars($job['company_name']); ?></div>
-                            <div class="category"><?php echo htmlspecialchars($job['category']); ?></div>
+                            <div>
+                                <div class="company-name"><?php echo htmlspecialchars($job['company_name']); ?></div>
+                                <div class="category"><?php echo htmlspecialchars($job['category']); ?></div>
+                            </div>
+                            <div class="saved-date">
+                                Saved: <?php echo date('M d, Y', strtotime($job['saved_date'])); ?>
+                            </div>
                         </div>
                         
                         <div class="job-details">
@@ -396,21 +354,19 @@ $jobs = $result->fetch_all(MYSQLI_ASSOC);
                         <div class="description">
                             <div class="description-label">Job Description</div>
                             <div class="description-text">
-                                <?php echo nl2br(htmlspecialchars(substr($job['description'], 0, 200))); ?>
-                                <?php echo strlen($job['description']) > 200 ? '...' : ''; ?>
+                                <?php echo nl2br(htmlspecialchars(substr($job['description'], 0, 250))); ?>
+                                <?php echo strlen($job['description']) > 250 ? '...' : ''; ?>
                             </div>
                         </div>
                         
                         <div class="job-actions">
-                            <a href="apply_job.php?job_id=<?php echo $job['job_id']; ?>" class="btn btn-primary">Apply</a>
-                            
+                            <a href="apply_job.php?job_id=<?php echo $job['job_id']; ?>" class="btn btn-primary">Apply Now</a>
                             <form method="POST" style="display: inline;">
                                 <input type="hidden" name="job_id" value="<?php echo $job['job_id']; ?>">
-                                <?php if ($job['is_saved'] > 0): ?>
-                                    <button type="submit" name="unsave_job" class="btn btn-saved">Saved</button>
-                                <?php else: ?>
-                                    <button type="submit" name="save_job" class="btn btn-save">Save for Later</button>
-                                <?php endif; ?>
+                                <button type="submit" name="unsave" class="btn btn-danger" 
+                                        onclick="return confirm('Remove this job from saved list?');">
+                                    Remove from Saved
+                                </button>
                             </form>
                         </div>
                     </div>

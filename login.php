@@ -1,8 +1,15 @@
 <?php
 session_start();
-if (isset($_SESSION["user"])) {
-    header("Location: view_jobs.php");
-    exit();
+
+// Check ONLY for user_id and user_type (not "user")
+if (isset($_SESSION["user_id"]) && isset($_SESSION["user_type"])) {
+    if ($_SESSION["user_type"] === "job_seeker") {
+        header("Location: view_jobs.php");
+        exit();
+    } else {
+        header("Location: create_job.php");
+        exit();
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -39,9 +46,6 @@ if (isset($_SESSION["user"])) {
                 
                 if ($user) {
                     if (password_verify($password, $user["password"])) {
-                        $_SESSION["user"] = $user["user_id"];
-                        $_SESSION["email"] = $user["email"];
-                        
                         // Check if user is job_seeker or employee
                         $checkSeeker = "SELECT * FROM job_seeker WHERE user_id = ?";
                         $stmtSeeker = mysqli_stmt_init($conn);
@@ -50,14 +54,19 @@ if (isset($_SESSION["user"])) {
                             mysqli_stmt_execute($stmtSeeker);
                             $resultSeeker = mysqli_stmt_get_result($stmtSeeker);
                             
+                            // Set session variables - user_id is the main one
+                            $_SESSION["user_id"] = $user["user_id"];
+                            $_SESSION["email"] = $user["email"];
+                            
                             if (mysqli_num_rows($resultSeeker) > 0) {
                                 $_SESSION["user_type"] = "job_seeker";
                                 header("Location: view_jobs.php");
+                                exit();
                             } else {
                                 $_SESSION["user_type"] = "employee";
                                 header("Location: create_job.php");
+                                exit();
                             }
-                            exit();
                         }
                     } else {
                         echo "<div class='alert alert-danger'>Password does not match</div>";

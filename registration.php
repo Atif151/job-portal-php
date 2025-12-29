@@ -8,8 +8,6 @@ if (isset($_SESSION["user"])) {
     exit();
 }
 ?>
-
-?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -17,6 +15,7 @@ if (isset($_SESSION["user"])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sign Up - Find Jobs</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="style.css">
 
 </head>
 <body>
@@ -195,4 +194,3 @@ if (isset($_SESSION["user"])) {
     </div>
 </body>
 </html>
-        

@@ -64,7 +64,6 @@ require_once "database.php";
             }
         }
         
-        // Get categories
         $sql = "SELECT * FROM job_category";
         $result = mysqli_query($conn, $sql);
         ?>
